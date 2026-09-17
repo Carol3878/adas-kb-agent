@@ -1,0 +1,12 @@
+python-dotenv==1.0.1
+pandas==2.2.3
+openpyxl==3.1.5
+unstructured==0.15.13
+cantools==39.4.4
+psycopg2-binary==2.9.10
+sentence-transformers==3.2.1
+langchain==0.3.7
+clickhouse-connect==0.8.7
+pymilvus==2.4.9
+anthropic==0.39.0
+pytest==8.3.3
