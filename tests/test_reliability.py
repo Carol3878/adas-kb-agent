@@ -9,6 +9,7 @@ import tempfile
 from kb.storage.local_object_store import LocalObjectStore
 from kb.storage.local_queue import LocalSqliteQueue
 from pipeline.dedup import compute_raw_hash, compute_normalized_text_hash
+from pipeline.parsers.feishu_parser import FeishuParser
 
 
 def test_local_object_store_roundtrip():
@@ -46,3 +47,15 @@ def test_dedup_normalized_text_hash_ignores_whitespace():
     hash1 = compute_normalized_text_hash("这是一份 测试文档。")
     hash2 = compute_normalized_text_hash("这是一份测试文档")
     assert hash1 == hash2  # 空白和标点差异不应该影响判重结果
+
+
+def test_feishu_parser_supports_recognizes_feishu_link():
+    parser = FeishuParser()
+    assert parser.supports("https://xxx.feishu.cn/docx/abc123") is True
+    assert parser.supports("local_file.docx") is False
+
+
+def test_feishu_parser_extracts_document_id():
+    parser = FeishuParser()
+    doc_id = parser._extract_document_id("https://xxx.feishu.cn/docx/DwLNdazyoo3lY6xJp7McbNklnUf")
+    assert doc_id == "DwLNdazyoo3lY6xJp7McbNklnUf"

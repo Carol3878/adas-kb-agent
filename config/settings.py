@@ -77,6 +77,11 @@ OBJECT_STORE_ROOT = os.getenv("OBJECT_STORE_ROOT", "./local_object_store")
 # 没有真实MQ时,用SQLite模拟队列
 LOCAL_QUEUE_DB_PATH = os.getenv("LOCAL_QUEUE_DB_PATH", "./local_queue.db")
 
+# ============ 【新增】飞书文档(B区解析的一个数据源) ============
+# 需要在飞书开放平台(open.feishu.cn)创建一个企业自建应用,拿到这两个值
+FEISHU_APP_ID = os.getenv("FEISHU_APP_ID", "")
+FEISHU_APP_SECRET = os.getenv("FEISHU_APP_SECRET", "")
+
 # ============ 意图分类关键词(规则粗筛,不调LLM) ============
 SIGNAL_LIST_HINTS = ["信号清单", "Signal", "DBC", "报文", "落盘路径", "文件命名"]
 KPI_RULE_HINTS = ["计算规则", "判定标准", "触发条件", "校验方法", "口径", "阈值"]
