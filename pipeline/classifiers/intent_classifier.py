@@ -51,3 +51,46 @@ def classify_document_intent_llm(doc_name: str, preview_text: str) -> dict:
     client = get_llm_client()
     prompt = INTENT_CLASSIFY_PROMPT.format(doc_name=doc_name, preview_text=preview_text)
     return client.chat_json(prompt)
+
+
+# ============ 【新增】分类优先级链 ============
+# 对应设计决策①:显式元数据 > 命名规则 > 规则分类器 > LLM > 反问用户
+# 能用便宜确定的方法判断,就不往下一级走,省成本也更准确。
+
+_NAME_RULE_HINTS = {
+    "流程": ["流程", "验收", "CRB"],
+    "法规": ["GB", "国标", "征求意见", "标准"],
+    "测试用例": ["测试用例", "TP", "校验"],
+}
+
+
+def resolve_document_category(doc_name: str, preview_text: str,
+                                explicit_metadata: dict | None = None,
+                                stage: str = "preliminary") -> dict:
+    """
+    统一分类入口,替代之前"规则和LLM平级调用"的方式。
+    stage="preliminary": 对应②格式路由阶段的预分类,只用便宜的前两级,不调LLM,
+                          目的是低成本挂一个候选身份。
+    stage="confirm":     对应⑤分类决策阶段,读取清洗后的中间态内容,
+                          前面几级都判断不了才轮到LLM,结果会覆盖预分类。
+    返回结果里的 confidence 和 source 用来决定要不要进人工审核队列。
+    """
+    if explicit_metadata and explicit_metadata.get("doc_category"):
+        return {"doc_category": explicit_metadata["doc_category"], "confidence": 1.0, "source": "explicit_metadata"}
+
+    for category, hints in _NAME_RULE_HINTS.items():
+        if any(h in doc_name for h in hints):
+            return {"doc_category": category, "confidence": 0.85, "source": "naming_rule"}
+
+    if stage == "preliminary":
+        return {"doc_category": "需求spec", "confidence": 0.3, "source": "default_placeholder"}
+
+    hints = scan_chunk_for_extraction_hints(preview_text)
+    if hints["hit_kpi_rule"]:
+        return {"doc_category": "需求spec", "confidence": 0.7, "source": "rule_classifier"}
+
+    llm_result = classify_document_intent_llm(doc_name, preview_text)
+    llm_result["source"] = "llm"
+    return llm_result
+
+    # 第五级"反问用户"由调用方(dispatcher)根据confidence判断是否push_to_review_queue

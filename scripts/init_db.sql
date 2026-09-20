@@ -66,6 +66,54 @@ CREATE TABLE IF NOT EXISTS vehicle_routing (
     UNIQUE (car_model, version_min, version_max)
 );
 
+-- 【新增】A区受理:文档状态机,PENDING->PARSING->CLASSIFY->CHUNKING->EMBEDDING->INDEXED
+CREATE TABLE IF NOT EXISTS documents (
+    id SERIAL PRIMARY KEY,
+    doc_name TEXT,
+    raw_hash TEXT UNIQUE,        -- 第一层查重:原始文件字节指纹
+    text_hash TEXT,              -- 第二层查重:清洗后规范化文本指纹
+    object_key TEXT,             -- 对应COS/本地对象存储里的路径
+    version INTEGER DEFAULT 1,
+    status TEXT DEFAULT 'PENDING' CHECK (status IN
+        ('PENDING','PARSING','CLASSIFY','CHUNKING','EMBEDDING','INDEXED',
+         'FAILED','DUPLICATE','NEEDS_REVIEW')),
+    last_error TEXT,
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_documents_text_hash ON documents(text_hash);
+
+-- 【新增】D区入库:SQL chunks表,这是权威源,Milvus只是它的索引副本
+CREATE TABLE IF NOT EXISTS chunks (
+    chunk_id TEXT PRIMARY KEY,
+    doc_id INTEGER REFERENCES documents(id),
+    text TEXT,
+    heading_path TEXT,
+    doc_category TEXT,
+    indexed BOOLEAN DEFAULT false,   -- Milvus那边是否已经写成功
+    created_at TIMESTAMP DEFAULT now()
+);
+
+-- 【新增】统一的人工审核队列,覆盖分类和抽取两种低置信度场景
+CREATE TABLE IF NOT EXISTS review_queue (
+    id SERIAL PRIMARY KEY,
+    doc_id INTEGER REFERENCES documents(id),
+    reason TEXT,
+    review_type TEXT CHECK (review_type IN ('classification', 'extraction', 'dead_letter')),
+    payload JSONB,
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    created_at TIMESTAMP DEFAULT now(),
+    resolved_at TIMESTAMP
+);
+
+-- 【新增】分类路由配置,对应⑥策略路由,把硬编码的if/else改成查这张表
+CREATE TABLE IF NOT EXISTS category_config (
+    doc_category TEXT PRIMARY KEY,
+    chunk_strategy TEXT,          -- 如 "按条款切" / "按标题路径切"
+    milvus_collection TEXT,
+    permission_group TEXT
+);
+
 -- 法规索引表(模块五的轻量伴生表)
 CREATE TABLE IF NOT EXISTS regulation_index (
     id SERIAL PRIMARY KEY,
