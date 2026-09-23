@@ -15,8 +15,7 @@ LLM客户端抽象层。
 import json
 from abc import ABC, abstractmethod
 
-from config.settings import LLM_BACKEND, ANTHROPIC_API_KEY, LLM_MODEL
-
+from config.settings import LLM_BACKEND, LLM_PROVIDER, ANTHROPIC_API_KEY, LLM_MODEL, GEMINI_API_KEY, GEMINI_MODEL
 
 class LLMClientBase(ABC):
     @abstractmethod
@@ -86,8 +85,48 @@ class AnthropicClient(LLMClientBase):
             tools=tools,
         )
 
+class GeminiClient(LLMClientBase):
+    """
+    【修改说明】google.generativeai已停止维护,改用新包google.genai。
+    调用方式变化比较大:不再是先configure再拿GenerativeModel,
+    而是直接建一个Client对象,每次调用时传入model名字。
+    """
+
+    def __init__(self):
+        from google import genai
+        self.client = genai.Client(api_key=GEMINI_API_KEY)
+
+    def chat_json(self, prompt: str):
+        response = self.client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+            config={"response_mime_type": "application/json"},
+        )
+        return json.loads(response.text)
+
+    def chat_with_tools(self, messages, tools, system=""):
+        """
+        新SDK的工具调用schema和消息格式跟旧包、跟Anthropic都不一样,
+        这里同样是简化实现,实际跑通之前建议先单独测chat_json这部分,
+        chat_with_tools大概率需要根据实际返回结构再调整。
+        """
+        full_prompt = f"{system}\n\n{messages[-1]['content']}" if system else messages[-1]["content"]
+        response = self.client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=full_prompt,
+        )
+
+        class GeminiResponse:
+            stop_reason = "end_turn"
+            content = response.text
+            tool_calls = []
+
+        return GeminiResponse()
 
 def get_llm_client() -> LLMClientBase:
     if LLM_BACKEND == "real":
-        return AnthropicClient()
+        if LLM_PROVIDER == "anthropic":
+            return AnthropicClient()
+        if LLM_PROVIDER == "gemini":
+                return GeminiClient()
     return MockLLMClient()

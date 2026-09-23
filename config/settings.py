@@ -18,6 +18,7 @@ load_dotenv()
 # "real": 用真实的 Milvus / Anthropic API
 VECTOR_BACKEND = os.getenv("VECTOR_BACKEND", "mock")
 LLM_BACKEND = os.getenv("LLM_BACKEND", "mock")
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini")
 
 
 # ============ Postgres(模块一/二/三/四 + 法规索引表) ============
@@ -55,6 +56,9 @@ CK_QUERY_CONFIG = {
 # ============ LLM ============
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 LLM_MODEL = "claude-sonnet-4-6"
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = "gemini-3.6-flash"
 
 # ============ Embedding(本地开源模型,不需要API Key) ============
 EMBED_MODEL_NAME = "BAAI/bge-m3"
