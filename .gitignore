@@ -1,4 +1,3 @@
-cat > .gitignore << 'EOF'
 # Python
 __pycache__/
 *.pyc
@@ -8,18 +7,24 @@ __pycache__/
 # 虚拟环境
 venv/
 .venv/
+kb-agent/
 
 # 环境变量(真实密钥不能传)
 .env
 
 # 数据文件(真实spec/测试数据不要传)
 data/
+test_data/
 *.pdf
 *.docx
 *.xlsx
 *.dbc
 
+# 【新增】本地假实现产生的运行时数据,不该进git
+local_object_store/
+local_queue.db
+pipeline_observability.log
+
 # IDE
 .vscode/settings.json
 .idea/
-EOF
