@@ -115,7 +115,7 @@ def _process_text_content(doc_id: int, doc_name: str, raw_hash: str,
     """B(解析后处理)/C(判定)/D(入库)公共逻辑,本地文件和飞书文档共用这一段"""
 
     text_hash = compute_normalized_text_hash(result.raw_text)
-    dup_check = check_duplicate(raw_hash, text_hash)
+    dup_check = check_duplicate(raw_hash, text_hash, exclude_doc_id=doc_id)
     if dup_check:
         update_status(doc_id, "DUPLICATE")
         return {"doc_id": doc_id, "status": "DUPLICATE", "match_level": dup_check["match_level"]}
